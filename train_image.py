@@ -256,9 +256,11 @@ def main():
 
     # Initialize trainer (make sure you have ImageModelTrainer defined)
     trainer = ImageModelTrainer(
-        img_size=IMG_SIZE,
-        batch_size=BATCH_SIZE
-    )
+    data_dir=DATA_DIR,   # Required by your class
+    img_size=IMG_SIZE,
+    batch_size=BATCH_SIZE
+)
+
 
     # Build model
     trainer.build_model(base_model_name='EfficientNetB0')
