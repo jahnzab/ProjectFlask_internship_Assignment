@@ -410,7 +410,7 @@ def main():
     # Configuration
     IMAGE_MODEL_PATH = 'models/image_model.h5'
     TEXT_MODEL_PATH = 'models/text_model.h5'
-    GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY'  # Replace with your key
+    GEMINI_API_KEY = 'AIzaSyARUo4nMnsQp0c9PiDI_ueAS0Xa9ZgL3Is'  # Replace with your key
     EPOCHS = 15
     
     # Note: You need to prepare matched image-text pairs
