@@ -388,7 +388,8 @@ def main():
     print("="*70)
     
     # Configuration
-    CSV_PATH = 'mental_health_dataset.csv'  # Update with your dataset path
+    CSV_PATH = './mental_health_dataset/mhp.csv'
+    # Update with your dataset path
     MAX_WORDS = 10000
     MAX_LEN = 200
     EMBEDDING_DIM = 128
@@ -405,6 +406,8 @@ def main():
     )
     
     # Load data
+   
+    
     df = trainer.load_data(CSV_PATH)
     
     # Prepare data
