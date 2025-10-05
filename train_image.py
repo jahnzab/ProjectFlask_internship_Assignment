@@ -273,9 +273,11 @@ def main():
     batch_size=BATCH_SIZE
 )
 
-
+    num_classes = train_dataset.element_spec[1].shape[-1]
+    print(f"Number of classes detected: {num_classes}")
+    
     # Build model
-    trainer.build_model(base_model_name='EfficientNetB0')
+    trainer.build_model(base_model_name='EfficientNetB0', num_classes=num_classes)
 
     # Train model using tf.data.Dataset objects
     trainer.train(
