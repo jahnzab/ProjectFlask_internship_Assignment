@@ -111,38 +111,50 @@ class ImageModelTrainer:
         print(f"Model built successfully! Total parameters: {self.model.count_params():,}")
         return self.model
 
-    def train(self, train_ds, val_ds, epochs=30):
-        """
-        Two-phase training: frozen base and fine-tuning
-        """
-        early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True, verbose=1)
-        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-7, verbose=1)
+    def train(self, train_dataset=None, val_dataset=None, epochs=30):
+      """
+      Train the image model using tf.data.Dataset objects.
+      """
+      if train_dataset is None or val_dataset is None:
+        raise ValueError("train_dataset and val_dataset must be provided")
 
-        # Phase 1: Train frozen base
-        checkpoint1 = ModelCheckpoint('best_image_model_phase1.h5', monitor='val_accuracy', save_best_only=True, verbose=1)
-        print("\n=== PHASE 1: Training with frozen base model ===")
-        history1 = self.model.fit(train_ds, validation_data=val_ds,
-                                  epochs=epochs//2, callbacks=[early_stop, checkpoint1, reduce_lr], verbose=1)
+      print("\n" + "="*50)
+      print("Training Image Model")
+      print("="*50)
 
-        # Phase 2: Fine-tuning
-        base_model = self.model.layers[3]  # Assuming base model is the 4th layer
-        base_model.trainable = True
-        freeze_until = int(len(base_model.layers) * 0.8)
-        for layer in base_model.layers[:freeze_until]:
-            layer.trainable = False
+      # Callbacks
+      early_stop = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss',
+        patience=5,
+        restore_best_weights=True,
+        verbose=1
+      )
 
-        self.model.compile(optimizer=keras.optimizers.Adam(1e-5),
-                           loss='categorical_crossentropy',
-                           metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()])
+      checkpoint = tf.keras.callbacks.ModelCheckpoint(
+        'best_image_model_phase1.h5',
+        monitor='val_accuracy',
+        save_best_only=True,
+        verbose=1
+      )
 
-        checkpoint2 = ModelCheckpoint('best_image_model_final.h5', monitor='val_accuracy', save_best_only=True, verbose=1)
-        print("\n=== PHASE 2: Fine-tuning ===")
-        history2 = self.model.fit(train_ds, validation_data=val_ds,
-                                  epochs=epochs//2, callbacks=[early_stop, checkpoint2, reduce_lr], verbose=1)
+      reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor='val_loss',
+        factor=0.5,
+        patience=3,
+        min_lr=1e-7,
+        verbose=1
+      )
 
-        # Combine histories
-        self.history = {key: history1.history[key] + history2.history[key] for key in history1.history}
-        return self.history
+      # Train
+      self.history = self.model.fit(
+        train_dataset,
+        validation_data=val_dataset,
+        epochs=epochs,
+        callbacks=[early_stop, checkpoint, reduce_lr],
+        verbose=1
+      )
+
+      return self.history
 
     def evaluate(self, val_ds):
         print("\nEvaluating model...")
@@ -267,9 +279,9 @@ def main():
 
     # Train model using tf.data.Dataset objects
     trainer.train(
-        train_dataset=train_dataset,
-        val_dataset=val_dataset,
-        epochs=EPOCHS
+    train_dataset=train_dataset,
+    val_dataset=val_dataset,
+    epochs=EPOCHS
     )
 
     # Plot training history
