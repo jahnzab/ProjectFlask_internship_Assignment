@@ -388,7 +388,7 @@ def main():
     print("="*70)
     
     # Configuration
-    CSV_PATH = './mental_health_dataset'
+    CSV_PATH = 'mental_health_dataset'
     # Update with your dataset path
     MAX_WORDS = 10000
     MAX_LEN = 200
