@@ -197,22 +197,36 @@ class ImageModelTrainer:
         return {'accuracy': acc, 'report': report, 'confusion_matrix': cm.tolist()}
 
     def plot_training_history(self):
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        axes[0, 0].plot(self.history['accuracy'], label='Train Accuracy')
-        axes[0, 0].plot(self.history['val_accuracy'], label='Val Accuracy')
-        axes[0, 0].set_title('Model Accuracy'); axes[0, 0].legend(); axes[0, 0].grid(True)
-        axes[0, 1].plot(self.history['loss'], label='Train Loss')
-        axes[0, 1].plot(self.history['val_loss'], label='Val Loss')
-        axes[0, 1].set_title('Model Loss'); axes[0, 1].legend(); axes[0, 1].grid(True)
-        axes[1, 0].plot(self.history['precision'], label='Train Precision')
-        axes[1, 0].plot(self.history['val_precision'], label='Val Precision')
-        axes[1, 0].set_title('Precision'); axes[1, 0].legend(); axes[1, 0].grid(True)
-        axes[1, 1].plot(self.history['recall'], label='Train Recall')
-        axes[1, 1].plot(self.history['val_recall'], label='Val Recall')
-        axes[1, 1].set_title('Recall'); axes[1, 1].legend(); axes[1, 1].grid(True)
-        plt.tight_layout()
-        plt.savefig('image_model_training_history.png', dpi=300)
-        plt.close()
+      fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    
+      axes[0, 0].plot(self.history.history['accuracy'], label='Train Accuracy')
+      axes[0, 0].plot(self.history.history['val_accuracy'], label='Val Accuracy')
+      axes[0, 0].set_title('Model Accuracy')
+      axes[0, 0].legend()
+      axes[0, 0].grid(True)
+
+      axes[0, 1].plot(self.history.history['loss'], label='Train Loss')
+      axes[0, 1].plot(self.history.history['val_loss'], label='Val Loss')
+      axes[0, 1].set_title('Model Loss')
+      axes[0, 1].legend()
+      axes[0, 1].grid(True)
+
+      axes[1, 0].plot(self.history.history['precision'], label='Train Precision')
+      axes[1, 0].plot(self.history.history['val_precision'], label='Val Precision')
+      axes[1, 0].set_title('Precision')
+      axes[1, 0].legend()
+      axes[1, 0].grid(True)
+
+      axes[1, 1].plot(self.history.history['recall'], label='Train Recall')
+      axes[1, 1].plot(self.history.history['val_recall'], label='Val Recall')
+      axes[1, 1].set_title('Recall')
+      axes[1, 1].legend()
+      axes[1, 1].grid(True)
+
+      plt.tight_layout()
+      plt.savefig('image_model_training_history.png', dpi=300)
+      plt.close()
+
 
     def save_model_and_config(self, output_dir='models'):
         os.makedirs(output_dir, exist_ok=True)
@@ -236,7 +250,7 @@ def main():
     # Configuration
     IMG_SIZE = (224, 224)
     BATCH_SIZE = 32
-    EPOCHS = 20
+    EPOCHS = 50
     DATA_DIR = '/content/ProjectFlask_internship_Assignment/dermatology_dataset'
 
     # Load train dataset with validation split
