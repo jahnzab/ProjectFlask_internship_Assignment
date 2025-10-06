@@ -1,7 +1,7 @@
 """
-OPTIMIZED Fusion Script - Internship Requirements
-Multimodal Psychodermatological Disorder Detection
-Uses CNN Transfer Learning + Trained Text Model + Gemini Augmentation
+LATE FUSION SCRIPT - Internship Requirements
+Separate Image + Text Models with Gemini Augmentation
+Combines predictions at decision level, not feature level
 """
 
 import os
@@ -11,13 +11,10 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import load_model, Model
-from tensorflow.keras.layers import *
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
-import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn.metrics import classification_report, accuracy_score
 import warnings
 import google.generativeai as genai
 
@@ -32,7 +29,6 @@ TEXT_MODEL_CONFIG_PATH = "/content/text_model_config.json"
 TOKENIZER_CONFIG_PATH = "/content/tokenizer_config.json"
 TEXT_CSV_PATH = "/content/ProjectFlask_internship_Assignment/mental_health_processed.csv"
 
-TRAIN_IMG_DIR = "/content/ProjectFlask_internship_Assignment/dermatology_dataset/train"
 TEST_IMG_DIR = "/content/ProjectFlask_internship_Assignment/dermatology_dataset/test"
 
 IMAGE_CLASSES = [
@@ -70,6 +66,7 @@ GEMINI_API_KEY = "AIzaSyDsUHGkjhASXBHLmUpIUq4JlokU9K90uTs"
 USE_GEMINI = True
 GEMINI_EMBED_DIM = 768
 
+
 # -------------------------
 # Gemini Embedder
 # -------------------------
@@ -103,68 +100,66 @@ class GeminiEmbedder:
                 embeddings.append(np.random.randn(self.embed_dim).astype(np.float32))
         return np.array(embeddings)
 
+
 # -------------------------
 # Image Loader
 # -------------------------
-class AlignedImageDataLoader:
+class ImageDataLoader:
     def __init__(self, directory, target_size=IMAGE_SIZE):
         self.directory = directory
         self.target_size = target_size
         self.samples = []
         self.labels = []
-        self.class_indices = {}
         self._load_image_paths()
 
     def _load_image_paths(self):
-        for idx, class_name in enumerate(sorted(IMAGE_CLASSES)):
+        for class_name in IMAGE_CLASSES:
             class_dir = os.path.join(self.directory, class_name)
             if os.path.exists(class_dir):
-                self.class_indices[class_name] = idx
                 for img_name in sorted(os.listdir(class_dir)):
                     if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
                         img_path = os.path.join(class_dir, img_name)
-                        self.samples.append((img_path, idx))
-                        self.labels.append(idx)
+                        self.samples.append(img_path)
         print(f"Loaded {len(self.samples)} images from {self.directory}")
 
     def load_and_preprocess_images(self, indices):
         images = []
-        labels = []
         for idx in indices:
-            img_path, label = self.samples[idx]
+            img_path = self.samples[idx]
             img = load_img(img_path, target_size=self.target_size)
             img = img_to_array(img) / 255.0
             images.append(img)
-            labels.append(label)
-        return np.array(images), np.array(labels)
+        return np.array(images)
+
 
 # -------------------------
 # Text Model Builder
 # -------------------------
 def build_text_model_from_config(config):
-    inputs = Input(shape=(config["max_len"],))
-    x = Embedding(config.get("max_words", 10000), config.get("embedding_dim", 128), mask_zero=True)(inputs)
-    x = SpatialDropout1D(0.3)(x)
-    x = Bidirectional(LSTM(128, return_sequences=True, dropout=0.3))(x)
-    x = Bidirectional(LSTM(64, return_sequences=True, dropout=0.3))(x)
-    attn = Dense(1, activation='tanh')(x)
-    attn = Flatten()(attn)
-    attn = Activation('softmax')(attn)
-    attn = RepeatVector(128)(attn)
-    attn = Permute([2, 1])(attn)
-    x = Multiply()([x, attn])
-    x = Lambda(lambda xin: tf.reduce_sum(xin, axis=1))(x)
-    x = Dense(256, activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.5)(x)
-    x = Dense(128, activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.4)(x)
-    x = Dense(64, activation='relu')(x)
-    x = Dropout(0.3)(x)
-    outputs = Dense(len(TEXT_CLASSES), activation='softmax')(x)
-    model = Model(inputs=inputs, outputs=outputs)
+    inputs = keras.Input(shape=(config["max_len"],))
+    x = keras.layers.Embedding(config.get("max_words", 10000), config.get("embedding_dim", 128), mask_zero=True)(inputs)
+    x = keras.layers.SpatialDropout1D(0.3)(x)
+    x = keras.layers.Bidirectional(keras.layers.LSTM(128, return_sequences=True, dropout=0.3))(x)
+    x = keras.layers.Bidirectional(keras.layers.LSTM(64, return_sequences=True, dropout=0.3))(x)
+    attn = keras.layers.Dense(1, activation='tanh')(x)
+    attn = keras.layers.Flatten()(attn)
+    attn = keras.layers.Activation('softmax')(attn)
+    attn = keras.layers.RepeatVector(128)(attn)
+    attn = keras.layers.Permute([2, 1])(attn)
+    x = keras.layers.Multiply()([x, attn])
+    x = keras.layers.Lambda(lambda xin: tf.reduce_sum(xin, axis=1))(x)
+    x = keras.layers.Dense(256, activation='relu')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.Dropout(0.5)(x)
+    x = keras.layers.Dense(128, activation='relu')(x)
+    x = keras.layers.BatchNormalization()(x)
+    x = keras.layers.Dropout(0.4)(x)
+    x = keras.layers.Dense(64, activation='relu')(x)
+    x = keras.layers.Dropout(0.3)(x)
+    outputs = keras.layers.Dense(len(TEXT_CLASSES), activation='softmax')(x)
+    model = keras.Model(inputs=inputs, outputs=outputs)
     return model
+
 
 # -------------------------
 # Tokenizer Loader
@@ -181,65 +176,22 @@ def load_or_create_tokenizer(path, texts=None):
             tokenizer.fit_on_texts(texts)
     return tokenizer
 
-# -------------------------
-# Fusion Model
-# -------------------------
-def build_advanced_fusion_model(image_feat_shape, text_feat_shape, gemini_feat_shape, num_classes=len(TEXT_CLASSES)):
-    img_input = Input(shape=image_feat_shape)
-    txt_input = Input(shape=text_feat_shape)
-    gemini_input = Input(shape=gemini_feat_shape)
-    img_proj = Dense(256, activation='relu')(img_input)
-    txt_proj = Dense(256, activation='relu')(txt_input)
-    gemini_proj = Dense(256, activation='relu')(gemini_input)
-    img_txt_attention = Dot(axes=-1, normalize=True)([img_proj, txt_proj])
-    img_txt_attention = Activation('sigmoid')(img_txt_attention)
-    gemini_context = Dense(256, activation='tanh')(gemini_proj)
-    weighted_img = Multiply()([img_proj, img_txt_attention])
-    weighted_txt = Multiply()([txt_proj, img_txt_attention])
-    fused = Concatenate()([weighted_img, weighted_txt, gemini_context])
-    x = Dense(512, activation='relu')(fused)
-    x = BatchNormalization()(x)
-    x = Dropout(0.5)(x)
-    x = Dense(256, activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.4)(x)
-    x = Dense(128, activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Dropout(0.3)(x)
-    outputs = Dense(num_classes, activation='softmax')(x)
-    model = Model(inputs=[img_input, txt_input, gemini_input], outputs=outputs)
-    model.compile(optimizer=keras.optimizers.Adam(1e-4),
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()])
-    return model
 
 # -------------------------
-# Main Pipeline
+# MAIN
 # -------------------------
 def main():
     print("="*60)
-    print("MULTIMODAL FUSION WITH GEMINI AUGMENTATION")
+    print("LATE FUSION: IMAGE + TEXT MODELS")
     print("="*60)
 
     text_df = pd.read_csv(TEXT_CSV_PATH)
     print(f"Loaded {len(text_df)} text samples")
 
-    image_loader = AlignedImageDataLoader(TEST_IMG_DIR)
-
-    num_samples = min(len(image_loader.samples), len(text_df))
-    print(f"Aligning {num_samples} samples for fusion")
-
-    aligned_texts = text_df['text'][:num_samples].tolist()
-    aligned_labels = text_df['label'][:num_samples].tolist()
-
-    le = LabelEncoder()
-    le.fit(TEXT_CLASSES)
-    labels_encoded = le.transform(aligned_labels)
-    labels_onehot = keras.utils.to_categorical(labels_encoded, len(TEXT_CLASSES))
+    image_loader = ImageDataLoader(TEST_IMG_DIR)
 
     print("Loading image model...")
-    raw_image_model = load_model(IMAGE_MODEL_PATH, compile=False)
-    image_feat_extractor = Model(raw_image_model.input, raw_image_model.layers[-2].output)
+    image_model = load_model(IMAGE_MODEL_PATH, compile=False)
 
     print("Loading text model...")
     if os.path.exists(TEXT_MODEL_CONFIG_PATH):
@@ -249,42 +201,55 @@ def main():
         text_config = {"max_len": 100, "max_words": 10000, "embedding_dim": 128}
     text_model = build_text_model_from_config(text_config)
     text_model.load_weights(TEXT_MODEL_WEIGHTS_PATH)
-    text_feat_extractor = Model(text_model.input, text_model.layers[-4].output)
+
+    tokenizer = load_or_create_tokenizer(TOKENIZER_CONFIG_PATH, text_df['text'].tolist())
 
     gemini_embedder = GeminiEmbedder(GEMINI_API_KEY)
 
-    fusion_model = build_advanced_fusion_model(
-        image_feat_shape=image_feat_extractor.output_shape[1:],
-        text_feat_shape=text_feat_extractor.output_shape[1:],
-        gemini_feat_shape=(GEMINI_EMBED_DIM,)
-    )
-
-    tokenizer = load_or_create_tokenizer(TOKENIZER_CONFIG_PATH, aligned_texts)
-
-    all_predictions = []
-    all_true_labels = []
-    num_batches = int(np.ceil(num_samples / BATCH_SIZE))
-
+    # -------------------------
+    # Image Predictions
+    # -------------------------
+    print("Predicting image classes...")
+    img_preds = []
+    batch_size = BATCH_SIZE
+    num_batches = int(np.ceil(len(image_loader.samples) / batch_size))
     for batch_idx in range(num_batches):
-        start_idx = batch_idx * BATCH_SIZE
-        end_idx = min(start_idx + BATCH_SIZE, num_samples)
-        batch_texts = aligned_texts[start_idx:end_idx]
-        batch_labels = labels_onehot[start_idx:end_idx]
+        start = batch_idx * batch_size
+        end = min(start + batch_size, len(image_loader.samples))
+        batch_images = image_loader.load_and_preprocess_images(range(start, end))
+        batch_preds = image_model.predict(batch_images, verbose=0)
+        img_preds.append(batch_preds)
+    img_preds = np.vstack(img_preds)
 
-        batch_images, _ = image_loader.load_and_preprocess_images(range(start_idx, end_idx))
-        text_sequences = tokenizer.texts_to_sequences(batch_texts)
-        text_padded = pad_sequences(text_sequences, maxlen=text_config["max_len"], padding='post')
+    # -------------------------
+    # Text Predictions
+    # -------------------------
+    print("Predicting text classes...")
+    text_sequences = tokenizer.texts_to_sequences(text_df['text'].tolist())
+    text_padded = pad_sequences(text_sequences, maxlen=text_config["max_len"], padding='post')
+    text_preds = text_model.predict(text_padded, verbose=0)
 
-        img_feats = image_feat_extractor.predict(batch_images, verbose=0)
-        text_feats = text_feat_extractor.predict(text_padded, verbose=0)
-        gemini_feats = gemini_embedder.embed_texts(batch_texts)
+    # -------------------------
+    # Gemini Predictions (optional)
+    # -------------------------
+    print("Embedding text via Gemini...")
+    gemini_feats = gemini_embedder.embed_texts(text_df['text'].tolist())
 
-        predictions = fusion_model.predict([img_feats, text_feats, gemini_feats], verbose=0)
-        all_predictions.extend(np.argmax(predictions, axis=1))
-        all_true_labels.extend(np.argmax(batch_labels, axis=1))
+    # -------------------------
+    # Late Fusion
+    # -------------------------
+    print("Performing late fusion...")
+    # Weighted average (adjust weights as needed)
+    img_weight = 0.5
+    text_weight = 0.5
+    fused_preds = img_weight * img_preds[:, :len(TEXT_CLASSES)] + text_weight * text_preds
 
-    acc = accuracy_score(all_true_labels, all_predictions)
-    print(f"Final Accuracy: {acc:.4f}")
+    fused_labels = np.argmax(fused_preds, axis=1)
+    true_labels = LabelEncoder().fit(TEXT_CLASSES).transform(text_df['label'])
+
+    acc = accuracy_score(true_labels, fused_labels)
+    print(f"Late Fusion Accuracy: {acc:.4f}")
+    print(classification_report(true_labels, fused_labels, target_names=TEXT_CLASSES))
 
 
 if __name__ == "__main__":
