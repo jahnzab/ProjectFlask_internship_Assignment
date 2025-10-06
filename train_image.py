@@ -18,6 +18,21 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLRO
 import json
 import warnings
 warnings.filterwarnings('ignore')
+print("TensorFlow version:", tf.__version__)
+print("NumPy version:", np.__version__)
+
+# ✅ Force GPU usage if available
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    print("✅ GPU is available:", gpus)
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print("✅ GPU memory growth enabled")
+    except RuntimeError as e:
+        print(e)
+else:
+    print("❌ No GPU detected, training will run on CPU (slower)")
 
 # Set random seeds for reproducibility
 np.random.seed(42)
@@ -221,7 +236,7 @@ def main():
     # Configuration
     IMG_SIZE = (224, 224)
     BATCH_SIZE = 32
-    EPOCHS = 30
+    EPOCHS = 20
     DATA_DIR = '/content/ProjectFlask_internship_Assignment/dermatology_dataset'
 
     # Load train dataset with validation split
@@ -265,6 +280,16 @@ def main():
     print(f"Train: {train_samples} samples")
     print(f"Validation: {val_samples} samples")
     print(f"Test: {test_samples} samples")
+    # Get class names
+    class_names = train_dataset.class_names
+    print(f"Class names: {class_names}")
+    print(f"Number of classes: {len(class_names)}")
+
+    # Optimize datasets (light optimization)
+    AUTOTUNE = tf.data.AUTOTUNE
+    train_dataset = train_dataset.prefetch(buffer_size=AUTOTUNE)
+    val_dataset = val_dataset.prefetch(buffer_size=AUTOTUNE)
+    test_dataset = test_dataset.prefetch(buffer_size=AUTOTUNE)
 
     # Initialize trainer (make sure you have ImageModelTrainer defined)
     trainer = ImageModelTrainer(
