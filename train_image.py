@@ -329,7 +329,7 @@ def main():
     trainer.plot_training_history()
 
     # Evaluate model
-    metrics = trainer.evaluate(test_dataset=test_dataset)
+    metrics = trainer.evaluate(test_dataset)
 
     # Save model
     trainer.save_model_and_config()
