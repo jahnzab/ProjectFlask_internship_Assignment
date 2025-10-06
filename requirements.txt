@@ -7,7 +7,7 @@
 # ============================================================================
 tensorflow==2.17.0
 
-numpy>=1.24.3,<2.0
+numpy==1.26
 
 
 # Alternative for GPU (uncomment if you have NVIDIA GPU with CUDA 11.8)
@@ -15,8 +15,8 @@ numpy>=1.24.3,<2.0
 
 # Data Processing & Scientific Computing
 # ===========================================================================
-pandas==2.0.3
-scikit-learn==1.3.2
+pandas==2.2.2
+scikit-learn==1.5
 scipy==1.11.4
 
 # Image Processing
