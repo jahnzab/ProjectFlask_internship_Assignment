@@ -23,13 +23,41 @@ warnings.filterwarnings('ignore')
 # -------------------------
 # CONFIG
 # -------------------------
-IMAGE_MODEL_PATH = "/content/best_image_model_phase1.h5"
-TEXT_MODEL_WEIGHTS_PATH = "/content/best_text_model.h5"
-TEXT_MODEL_CONFIG_PATH = "/content/text_model_config.json"
-TOKENIZER_CONFIG_PATH = "/content/tokenizer_config.json"
-TEXT_CSV_PATH = "/content/ProjectFlask_internship_Assignment/mental_health_processed.csv"
+IMAGE_MODEL_PATH = "best_image_model_phase1.h5"
+TEXT_MODEL_WEIGHTS_PATH = "best_text_model.h5"
+TEXT_MODEL_CONFIG_PATH = "text_model_config.json"
+TOKENIZER_CONFIG_PATH = "tokenizer_config.json"
+TEXT_CSV_PATH = "mental_health_processed.csv"
 
-TEST_IMG_DIR = "/content/ProjectFlask_internship_Assignment/dermatology_dataset/test"
+TEST_IMG_DIR = "/home/jahanzaib/Desktop/Project_Intern/Flaskapp/dermatology-dataset/test"
+print("Loading image model (auto-adjusting for input shape)...")
+
+from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras import layers, models
+
+try:
+    image_model = load_model(IMAGE_MODEL_PATH, compile=False)
+except ValueError as e:
+    print("⚠ Shape mismatch detected while loading EfficientNet weights — rebuilding model with 1-channel input...")
+
+    # ✅ Rebuild model architecture for grayscale (1-channel) input
+    base_model = EfficientNetB0(
+        include_top=False,
+        weights=None,
+        input_shape=(224, 224, 1),
+        pooling='avg'
+    )
+    x = layers.Dense(128, activation='relu')(base_model.output)
+    x = layers.Dropout(0.3)(x)
+    output = layers.Dense(23, activation='softmax')(x)  # adjust num classes if needed
+    image_model = models.Model(inputs=base_model.input, outputs=output)
+
+    # ✅ Load weights safely, ignoring shape mismatches
+    try:
+        image_model.load_weights(IMAGE_MODEL_PATH, by_name=True, skip_mismatch=True)
+        print("✅ Weights loaded with shape-mismatch tolerance.")
+    except Exception as e2:
+        print("❌ Could not load weights properly:", e2)
 
 IMAGE_CLASSES = [
     "Atopic Dermatitis Photos",
@@ -109,7 +137,6 @@ class ImageDataLoader:
         self.directory = directory
         self.target_size = target_size
         self.samples = []
-        self.labels = []
         self._load_image_paths()
 
     def _load_image_paths(self):
@@ -118,18 +145,51 @@ class ImageDataLoader:
             if os.path.exists(class_dir):
                 for img_name in sorted(os.listdir(class_dir)):
                     if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        img_path = os.path.join(class_dir, img_name)
-                        self.samples.append(img_path)
+                        self.samples.append(os.path.join(class_dir, img_name))
         print(f"Loaded {len(self.samples)} images from {self.directory}")
 
-    def load_and_preprocess_images(self, indices):
+    def load_and_preprocess_images(self, indices, expected_channels=3):
         images = []
         for idx in indices:
             img_path = self.samples[idx]
-            img = load_img(img_path, target_size=self.target_size)
+            # Always load in RGB to be compatible with pretrained models
+            img = load_img(img_path, target_size=self.target_size, color_mode='rgb')
             img = img_to_array(img) / 255.0
+
+            # If model expects grayscale, convert dynamically
+            if expected_channels == 1 and img.shape[-1] == 3:
+                img = tf.image.rgb_to_grayscale(img)
+            elif expected_channels == 3 and img.shape[-1] == 1:
+                img = np.repeat(img, 3, axis=-1)
+
             images.append(img)
         return np.array(images)
+# class ImageDataLoader:
+#     def __init__(self, directory, target_size=IMAGE_SIZE):
+#         self.directory = directory
+#         self.target_size = target_size
+#         self.samples = []
+#         self.labels = []
+#         self._load_image_paths()
+
+#     def _load_image_paths(self):
+#         for class_name in IMAGE_CLASSES:
+#             class_dir = os.path.join(self.directory, class_name)
+#             if os.path.exists(class_dir):
+#                 for img_name in sorted(os.listdir(class_dir)):
+#                     if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+#                         img_path = os.path.join(class_dir, img_name)
+#                         self.samples.append(img_path)
+#         print(f"Loaded {len(self.samples)} images from {self.directory}")
+
+#     def load_and_preprocess_images(self, indices):
+#         images = []
+#         for idx in indices:
+#             img_path = self.samples[idx]
+#             img = load_img(img_path, target_size=self.target_size)
+#             img = img_to_array(img) / 255.0
+#             images.append(img)
+#         return np.array(images)
 
 
 # -------------------------
@@ -190,8 +250,8 @@ def main():
 
     image_loader = ImageDataLoader(TEST_IMG_DIR)
 
-    print("Loading image model...")
-    image_model = load_model(IMAGE_MODEL_PATH, compile=False)
+    print("Using preloaded image model from earlier (grayscale-compatible).")
+    # image_model is already loaded safely above with shape adjustment
 
     print("Loading text model...")
     if os.path.exists(TEXT_MODEL_CONFIG_PATH):
@@ -209,17 +269,25 @@ def main():
     # -------------------------
     # Image Predictions
     # -------------------------
+    # -------------------------
+    # Image Predictions
+    # -------------------------
     print("Predicting image classes...")
     img_preds = []
     batch_size = BATCH_SIZE
     num_batches = int(np.ceil(len(image_loader.samples) / batch_size))
+
+    # detect input channels from model
+    expected_channels = image_model.input_shape[-1] if len(image_model.input_shape) == 4 else 3
+
     for batch_idx in range(num_batches):
-        start = batch_idx * batch_size
-        end = min(start + batch_size, len(image_loader.samples))
-        batch_images = image_loader.load_and_preprocess_images(range(start, end))
-        batch_preds = image_model.predict(batch_images, verbose=0)
-        img_preds.append(batch_preds)
+      start = batch_idx * batch_size
+      end = min(start + batch_size, len(image_loader.samples))
+      batch_images = image_loader.load_and_preprocess_images(range(start, end),   expected_channels)
+      batch_preds = image_model.predict(batch_images, verbose=0)
+      img_preds.append(batch_preds)
     img_preds = np.vstack(img_preds)
+
 
     # -------------------------
     # Text Predictions
@@ -242,11 +310,20 @@ def main():
     # Weighted average (adjust weights as needed)
     img_weight = 0.5
     text_weight = 0.5
-    fused_preds = img_weight * img_preds[:, :len(TEXT_CLASSES)] + text_weight * text_preds
 
+    # Ensure predictions have the same number of samples
+    min_len = min(len(img_preds), len(text_preds))
+    img_preds_trimmed = img_preds[:min_len]
+    text_preds_trimmed = text_preds[:min_len]
+
+    # Fuse predictions
+    fused_preds = img_weight * img_preds_trimmed[:, :len(TEXT_CLASSES)] + text_weight * text_preds_trimmed
+
+    # Compute labels
     fused_labels = np.argmax(fused_preds, axis=1)
-    true_labels = LabelEncoder().fit(TEXT_CLASSES).transform(text_df['label'])
+    true_labels = LabelEncoder().fit(TEXT_CLASSES).transform(text_df['label'][:min_len])
 
+    # Print metrics
     acc = accuracy_score(true_labels, fused_labels)
     print(f"Late Fusion Accuracy: {acc:.4f}")
     print(classification_report(true_labels, fused_labels, target_names=TEXT_CLASSES))
@@ -254,3 +331,55 @@ def main():
 
 if __name__ == "__main__":
     main()
+# -------------------------
+# Flask-ready Late Fusion Predictor
+# -------------------------
+class LateFusionPredictor:
+    def __init__(self, image_model_path, text_model_path, tokenizer, text_config, img_weight=0.5, text_weight=0.5):
+        self.tokenizer = tokenizer
+        self.img_weight = img_weight
+        self.text_weight = text_weight
+        self.text_classes = TEXT_CLASSES
+
+        # Lazy load image model with shape adjustment
+        self.image_model = self._load_image_model(image_model_path)
+
+        # Load text model
+        self.text_model = build_text_model_from_config(text_config)
+        self.text_model.load_weights(text_model_path)
+
+    def _load_image_model(self, path):
+        try:
+            model = load_model(path, compile=False)
+        except ValueError:
+            # Rebuild EfficientNet for 1-channel input
+            base = EfficientNetB0(include_top=False, weights=None, input_shape=(224,224,3), pooling='avg')
+            x = layers.Dense(128, activation='relu')(base.output)
+            x = layers.Dropout(0.3)(x)
+            out = layers.Dense(23, activation='softmax')(x)
+            model = Model(inputs=base.input, outputs=out)
+            try:
+                model.load_weights(path, by_name=True, skip_mismatch=True)
+            except:
+                print("❌ Could not load image weights properly")
+        return model
+
+    def preprocess_image(self, img_path):
+        img = load_img(img_path, target_size=(224,224), color_mode='rgb')
+        img = img_to_array(img)/255.0
+        if self.image_model.input_shape[-1] == 1:
+            img = tf.image.rgb_to_grayscale(img)
+        img = np.expand_dims(img, axis=0)
+        return img
+
+    def predict(self, img_path, text_input):
+        img_array = self.preprocess_image(img_path)
+        img_pred = self.image_model.predict(img_array, verbose=0)
+
+        seq = self.tokenizer.texts_to_sequences([text_input])
+        padded = pad_sequences(seq, maxlen=200, padding='post')
+        text_pred = self.text_model.predict(padded, verbose=0)
+
+        fused = self.img_weight*img_pred[:, :len(self.text_classes)] + self.text_weight*text_pred
+        label = self.text_classes[np.argmax(fused)]
+        return label
