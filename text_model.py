@@ -1,350 +1,298 @@
-"""
-Simple Text Model Training Script
-Works with preprocessed CSV (text, label format)
-"""
-
 import os
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.model_selection import train_test_split
+import numpy as np
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-import json
-import re
-import nltk
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-import warnings
-warnings.filterwarnings('ignore')
+from sklearn.impute import SimpleImputer
+from imblearn.over_sampling import SMOTE
+import joblib
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-# Download NLTK data
-try:
-    nltk.download('stopwords', quiet=True)
-    nltk.download('wordnet', quiet=True)
-    nltk.download('omw-1.4', quiet=True)
-except:
-    pass
+# ----------------------------------------------------
+# STEP 1: LOAD DATASET
+# ----------------------------------------------------
+DATASET_DIR = "/content/ProjectFlask_internship_Assignment/mental_health_dataset"
 
-# Set random seeds
-np.random.seed(42)
-tf.random.set_seed(42)
+FILES = {
+    "Anxiety": "Anxiety.csv",
+    "Depression": "Depression.csv",
+    "Stress": "Stress.csv"
+}
 
-class SimpleTextTrainer:
-    def __init__(self, max_words=10000, max_len=200, embedding_dim=128):
-        self.max_words = max_words
-        self.max_len = max_len
-        self.embedding_dim = embedding_dim
-        self.tokenizer = None
-        self.model = None
-        self.history = None
-        self.label_mapping = {}
-        self.lemmatizer = WordNetLemmatizer()
-        self.stop_words = set(stopwords.words('english'))
+# Expected classes for each disorder
+EXPECTED_CLASSES = {
+    "Anxiety": ["Minimal Anxiety", "Mild Anxiety", "Moderate Anxiety", "Severe Anxiety"],
+    "Depression": [
+        "No Depression", "Minimal Depression", "Mild Depression",
+        "Moderate Depression", "Moderately Severe Depression", "Severe Depression"
+    ],
+    "Stress": ["Low Stress", "Moderate Stress", "High Perceived Stress"]
+}
 
-    def load_data(self, csv_path):
-        """
-        Load preprocessed CSV with 'text' and 'label' columns
-        """
-        print(f"Loading data from: {csv_path}")
-        
-        df = pd.read_csv(csv_path)
-        
-        # Check required columns
-        if 'text' not in df.columns or 'label' not in df.columns:
-            raise ValueError("CSV must have 'text' and 'label' columns")
-        
-        print(f"\n✓ Loaded {len(df)} samples")
-        print(f"\nClass distribution:")
-        print(df['label'].value_counts())
-        
-        return df
+# Expected combined labels
+EXPECTED_COMBINED = [
+    "Anxiety_Minimal Anxiety", "Anxiety_Mild Anxiety", "Anxiety_Moderate Anxiety", "Anxiety_Severe Anxiety",
+    "Depression_No Depression", "Depression_Minimal Depression", "Depression_Mild Depression",
+    "Depression_Moderate Depression", "Depression_Moderately Severe Depression", "Depression_Severe Depression",
+    "Stress_Low Stress", "Stress_Moderate Stress", "Stress_High Perceived Stress"
+]
 
-    def preprocess_text(self, text):
-        """Clean and preprocess text"""
-        text = text.lower()
-        text = re.sub(r'http\S+|www\S+|https\S+', '', text)
-        text = re.sub(r'\S+@\S+', '', text)
-        text = re.sub(r'@\w+|#\w+', '', text)
-        text = re.sub(r'[^a-zA-Z\s]', '', text)
-        text = re.sub(r'\s+', ' ', text).strip()
-        
-        words = [self.lemmatizer.lemmatize(w) for w in text.split() 
-                if w not in self.stop_words and len(w) > 2]
-        
-        return ' '.join(words)
+# ----------------------------------------------------
+# STEP 2: DATA CLEANING HELPERS
+# ----------------------------------------------------
+def clean_text(x: str) -> str:
+    """Cleans class label text."""
+    if not isinstance(x, str):
+        return str(x)
+    return " ".join(x.strip().title().split())  # remove extra spaces, standardize case
 
-    def prepare_data(self, df):
-        """Prepare data for training"""
-        print("\nPreprocessing text...")
-        
-        df['processed_text'] = df['text'].apply(self.preprocess_text)
-        df = df[df['processed_text'].str.len() > 0]
-        
-        # Encode labels
-        unique_labels = sorted(df['label'].unique())
-        self.label_mapping = {label: idx for idx, label in enumerate(unique_labels)}
-        df['encoded_label'] = df['label'].map(self.label_mapping)
-        
-        print(f"Label mapping: {self.label_mapping}")
-        
-        # Tokenize
-        self.tokenizer = Tokenizer(num_words=self.max_words, oov_token='<OOV>')
-        self.tokenizer.fit_on_texts(df['processed_text'])
-        
-        sequences = self.tokenizer.texts_to_sequences(df['processed_text'])
-        X = pad_sequences(sequences, maxlen=self.max_len, padding='post', truncating='post')
-        y = keras.utils.to_categorical(df['encoded_label'], num_classes=len(self.label_mapping))
-        
-        print(f"\n✓ Vocabulary size: {len(self.tokenizer.word_index)}")
-        print(f"✓ Sequence shape: {X.shape}")
-        print(f"✓ Labels shape: {y.shape}")
-        
-        return X, y
+def unify_label(disorder: str, label: str) -> str:
+    """Ensure labels match the standardized class names."""
+    label = clean_text(label)
 
-    def build_model(self, num_classes):
-        """Build LSTM model with attention"""
-        print("\nBuilding model...")
-        
-        inputs = keras.Input(shape=(self.max_len,))
-        x = layers.Embedding(self.max_words, self.embedding_dim, mask_zero=True)(inputs)
-        x = layers.SpatialDropout1D(0.3)(x)
-        
-        x = layers.Bidirectional(layers.LSTM(128, return_sequences=True, dropout=0.3, recurrent_dropout=0.3))(x)
-        x = layers.Bidirectional(layers.LSTM(64, return_sequences=True, dropout=0.3, recurrent_dropout=0.3))(x)
-        
-        # Attention
-        attn = layers.Dense(1, activation='tanh')(x)
-        attn = layers.Flatten()(attn)
-        attn = layers.Activation('softmax')(attn)
-        attn = layers.RepeatVector(128)(attn)
-        attn = layers.Permute([2,1])(attn)
-        x = layers.Multiply()([x, attn])
-        x = layers.Lambda(lambda xin: tf.reduce_sum(xin, axis=1))(x)
-        
-        # Dense layers
-        x = layers.Dense(256, activation='relu')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Dropout(0.5)(x)
-        
-        x = layers.Dense(128, activation='relu')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Dropout(0.4)(x)
-        
-        x = layers.Dense(64, activation='relu')(x)
-        x = layers.Dropout(0.3)(x)
-        
-        outputs = layers.Dense(num_classes, activation='softmax')(x)
-        
-        self.model = keras.Model(inputs, outputs)
-        self.model.compile(
-            optimizer=keras.optimizers.Adam(1e-3),
-            loss='categorical_crossentropy',
-            metrics=['accuracy', keras.metrics.Precision(), keras.metrics.Recall()]
+    # Define normalization rules
+    replacements = {
+        "High Stress": "High Perceived Stress",
+        "Perceived Stress High": "High Perceived Stress",
+        "Low Perceived Stress": "Low Stress",
+        "Moderate  Stress": "Moderate Stress",
+        "Sever Anxiety": "Severe Anxiety",
+        "Moderate  Anxiety": "Moderate Anxiety",
+        "Moderatly Severe Depression": "Moderately Severe Depression"
+    }
+
+    if label in replacements:
+        label = replacements[label]
+
+    # If label not found, find closest match
+    if label not in EXPECTED_CLASSES[disorder]:
+        for expected in EXPECTED_CLASSES[disorder]:
+            if expected.lower().startswith(label.lower()[:5]) or label.lower() in expected.lower():
+                label = expected
+                break
+        else:
+            print(f"Warning: Label '{label}' not found in expected classes for {disorder}. Defaulting to {EXPECTED_CLASSES[disorder][0]}")
+            label = EXPECTED_CLASSES[disorder][0]
+    
+    return label
+
+# ----------------------------------------------------
+# STEP 3: LOAD & PREPROCESS INDIVIDUAL CSV
+# ----------------------------------------------------
+def process_disorder(disorder: str, filename: str):
+    path = os.path.join(DATASET_DIR, filename)
+    print(f"\nProcessing {disorder} dataset...")
+    df = pd.read_csv(path)
+    print(f"Loaded {filename} with shape: {df.shape}")
+
+    # Clean column names
+    df.columns = [c.strip().replace(" ", "_") for c in df.columns]
+
+    # Find label column
+    label_col = next((c for c in df.columns if "label" in c.lower()), None)
+    if not label_col:
+        raise ValueError(f"No label column found in {filename}")
+
+    # Debug: Print raw labels
+    print(f"Raw labels for {disorder}: {df[label_col].unique()}")
+
+    # Clean and validate labels
+    df[label_col] = df[label_col].apply(lambda x: unify_label(disorder, x))
+    print(f"Class distribution for {disorder}:")
+    print(df[label_col].value_counts())
+
+    # Create combined label
+    df["Disorder_Type"] = disorder
+    df["Combined_Label"] = disorder + "_" + df[label_col]
+
+    # Validate combined labels
+    unique_combined = df["Combined_Label"].unique()
+    print(f"Combined labels for {disorder}: {unique_combined}")
+    if not all(label in EXPECTED_COMBINED for label in unique_combined):
+        raise ValueError(f"Unexpected combined labels in {disorder}: {unique_combined}")
+
+    # Handle numeric columns
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    X = df[numeric_cols].copy()
+
+    # Handle categorical columns
+    categorical_cols = [
+        col for col in df.columns 
+        if col not in numeric_cols and col not in [label_col, "Combined_Label", "Disorder_Type"]
+    ]
+    for col in categorical_cols:
+        df[col] = LabelEncoder().fit_transform(df[col].astype(str))
+        X[col] = df[col]
+
+    # Handle Age
+    if "1._Age" in X.columns:
+        X["1._Age"] = X["1._Age"].astype(str).apply(
+            lambda x: np.mean([int(i) for i in x.split('-')]) if '-' in x else pd.to_numeric(x, errors='coerce')
         )
-        
-        print(f"✓ Model parameters: {self.model.count_params():,}")
-        return self.model
+        X["1._Age"] = X["1._Age"].fillna(X["1._Age"].mean())
 
-    def train(self, X_train, y_train, X_val, y_val, epochs=20):
-        """Train the model"""
-        print(f"\n{'='*70}")
-        print("TRAINING TEXT MODEL")
-        print('='*70)
-        
-        callbacks = [
-            EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True, verbose=1),
-            ModelCheckpoint('best_text_model.h5', monitor='val_accuracy', save_best_only=True, verbose=1),
-            ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-7, verbose=1)
-        ]
-        
-        self.history = self.model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
-            epochs=epochs,
-            batch_size=64,
-            callbacks=callbacks,
-            verbose=1
-        )
-        
-        return self.history
+    # Handle CGPA
+    if "6._Current_CGPA" in X.columns:
+        X["6._Current_CGPA"] = pd.to_numeric(X["6._Current_CGPA"], errors='coerce')
+        if X["6._Current_CGPA"].isna().all():
+            X["6._Current_CGPA"] = 3.0
+        else:
+            X["6._Current_CGPA"] = X["6._Current_CGPA"].fillna(X["6._Current_CGPA"].mean())
 
-    def evaluate(self, X_test, y_test):
-        """Evaluate model"""
-        print("\nEvaluating model...")
-        
-        y_pred_probs = self.model.predict(X_test)
-        y_pred = np.argmax(y_pred_probs, axis=1)
-        y_true = np.argmax(y_test, axis=1)
-        
-        class_names = [k for k,v in sorted(self.label_mapping.items(), key=lambda x: x[1])]
-        
-        accuracy = accuracy_score(y_true, y_pred)
-        report = classification_report(y_true, y_pred, target_names=class_names, output_dict=True)
-        cm = confusion_matrix(y_true, y_pred)
-        
-        print(f"\n✅ Test Accuracy: {accuracy:.4f}")
-        print(f"\nClassification Report:")
-        print(classification_report(y_true, y_pred, target_names=class_names))
-        
-        # Plot confusion matrix
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Greens',
-                    xticklabels=class_names, yticklabels=class_names)
-        plt.title('Confusion Matrix - Text Model')
-        plt.ylabel('True Label')
-        plt.xlabel('Predicted Label')
-        plt.tight_layout()
-        plt.savefig('text_model_confusion_matrix.png', dpi=300)
-        plt.close()
-        
-        return {'accuracy': accuracy, 'report': report, 'confusion_matrix': cm.tolist()}
+    # Impute NaNs for all numeric columns
+    imputer = SimpleImputer(strategy='mean')
+    X = pd.DataFrame(imputer.fit_transform(X), columns=X.columns)
 
-    def plot_training_history(self):
-        """Plot training curves"""
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        
-        axes[0,0].plot(self.history.history['accuracy'], label='Train')
-        axes[0,0].plot(self.history.history['val_accuracy'], label='Val')
-        axes[0,0].set_title('Accuracy')
-        axes[0,0].legend()
-        axes[0,0].grid(True)
-        
-        axes[0,1].plot(self.history.history['loss'], label='Train')
-        axes[0,1].plot(self.history.history['val_loss'], label='Val')
-        axes[0,1].set_title('Loss')
-        axes[0,1].legend()
-        axes[0,1].grid(True)
-        
-        axes[1,0].plot(self.history.history['precision'], label='Train')
-        axes[1,0].set_title('Precision')
-        axes[1,0].legend()
-        axes[1,0].grid(True)
-        
-        axes[1,1].plot(self.history.history['recall'], label='Train')
-        axes[1,1].set_title('Recall')
-        axes[1,1].legend()
-        axes[1,1].grid(True)
-        
-        plt.tight_layout()
-        plt.savefig('text_model_training_history.png', dpi=300)
-        plt.close()
+    print(f"NaNs in {disorder} after preprocessing:\n{X.isna().sum()}")
 
-    def save_model_and_config(self, output_dir='models'):
-        """Save model and configs"""
-        os.makedirs(output_dir, exist_ok=True)
-        
-        self.model.save(os.path.join(output_dir, 'text_model.h5'))
-        
-        tokenizer_config = {
-            'word_index': self.tokenizer.word_index,
-            'index_word': {v: k for k, v in self.tokenizer.word_index.items()},
-            'num_words': self.max_words
-        }
-        
-        with open(os.path.join(output_dir, 'tokenizer_config.json'), 'w') as f:
-            json.dump(tokenizer_config, f, indent=4)
-        
-        config = {
-            'label_mapping': self.label_mapping,
-            'max_words': self.max_words,
-            'max_len': self.max_len,
-            'embedding_dim': self.embedding_dim,
-            'num_classes': len(self.label_mapping)
-        }
-        
-        with open(os.path.join(output_dir, 'text_model_config.json'), 'w') as f:
-            json.dump(config, f, indent=4)
-        
-        print(f"\n✓ Model saved to {output_dir}/")
+    return X, df[["Combined_Label", "Disorder_Type"]], label_col
 
+# ----------------------------------------------------
+# STEP 4: COMBINE ALL DISORDERS
+# ----------------------------------------------------
+def combine_datasets():
+    combined_X = []
+    combined_y = []
+    for disorder, file in FILES.items():
+        X, y_df, label_col = process_disorder(disorder, file)
+        combined_X.append(X)
+        combined_y.append(y_df)
 
-def main():
-    print("="*70)
-    print("TEXT MODEL TRAINING - MENTAL HEALTH DATA")
-    print("="*70)
-    
-    # ===================================================================
-    # UPDATE THIS PATH TO YOUR PREPROCESSED CSV
-    # ===================================================================
-    CSV_PATH = '/content/ProjectFlask_internship_Assignment/mental_health_processed.csv'
-    # ===================================================================
-    
-    MAX_WORDS = 10000
-    MAX_LEN = 200
-    EMBEDDING_DIM = 128
-    EPOCHS = 20
-    
-    print(f"\nGPU Available: {tf.config.list_physical_devices('GPU')}")
-    
-    # Initialize trainer
-    trainer = SimpleTextTrainer(
-        max_words=MAX_WORDS,
-        max_len=MAX_LEN,
-        embedding_dim=EMBEDDING_DIM
-    )
-    
-    # Load data
-    df = trainer.load_data(CSV_PATH)
-    
-    # Prepare data
-    X, y = trainer.prepare_data(df)
-    
-    # Split data
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X, y, test_size=0.3, random_state=42, stratify=y
-    )
-    X_val, X_test, y_val, y_test = train_test_split(
-        X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
-    )
-    
-    print(f"\n{'='*70}")
-    print(f"DATASET SPLIT")
-    print('='*70)
-    print(f"Train: {len(X_train)} samples")
-    print(f"Validation: {len(X_val)} samples")
-    print(f"Test: {len(X_test)} samples")
-    
-    # Build model
-    trainer.build_model(num_classes=len(trainer.label_mapping))
-    
-    # Train model
-    trainer.train(X_train, y_train, X_val, y_val, epochs=EPOCHS)
-    
-    # Plot history
-    trainer.plot_training_history()
-    
-    # Evaluate
-    metrics = trainer.evaluate(X_test, y_test)
-    
-    # Save
-    trainer.save_model_and_config()
-    
-    print(f"\n{'='*70}")
-    print("✅ TRAINING COMPLETE!")
-    print('='*70)
-    print(f"\nExpected Results:")
-    print(f"  Accuracy: 80-88% (you got {metrics['accuracy']:.2%})")
-    print(f"  All 4 classes should have predictions")
-    
-    if metrics['accuracy'] > 0.75:
-        print(f"\n🎉 SUCCESS! Model is ready for use.")
-    elif metrics['accuracy'] > 0.50:
-        print(f"\n⚠️ Moderate performance. Consider:")
-        print(f"    - Training for more epochs")
-        print(f"    - Checking data quality")
+    # Align feature sets
+    all_features = set()
+    for X in combined_X:
+        all_features.update(X.columns)
+    all_features = sorted(list(all_features))
+
+    aligned_X = []
+    for X in combined_X:
+        for col in all_features:
+            if col not in X.columns:
+                X[col] = 0
+        aligned_X.append(X[all_features])
+
+    final_X = pd.concat(aligned_X, ignore_index=True)
+    final_y = pd.concat(combined_y, ignore_index=True)
+
+    # Check combined label distribution
+    unique_labels = sorted(final_y["Combined_Label"].unique())
+    print(f"\n✅ Combined dataset shape: {final_X.shape}")
+    print(f"Unique Combined Labels ({len(unique_labels)}): {unique_labels}")
+
+    # Verify against EXPECTED_COMBINED
+    unexpected_labels = [lbl for lbl in unique_labels if lbl not in EXPECTED_COMBINED]
+    if unexpected_labels:
+        print(f"⚠️ Found unexpected labels: {unexpected_labels}")
     else:
-        print(f"\n❌ Low accuracy. Check:")
-        print(f"    - Data preprocessing")
-        print(f"    - Class balance")
-        print(f"    - CSV format")
+        print("✅ All combined labels match expected list.")
+
+    # Dynamically handle number of classes (don’t raise hardcoded error)
+    print(f"\nDetected {len(unique_labels)} unique target classes.")
+
+    return final_X, final_y
 
 
+# ----------------------------------------------------
+# STEP 5: TRAIN MODEL
+# ----------------------------------------------------
+def train_combined_model(X, y):
+    # Encode labels
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y["Combined_Label"])
+
+    # Scale features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # SMOTE balancing
+    try:
+        smote = SMOTE(random_state=42, k_neighbors=3)
+        X_resampled, y_resampled = smote.fit_resample(X_scaled, y_encoded)
+        print(f"✅ Applied SMOTE: {X.shape} → {X_resampled.shape}")
+    except Exception as e:
+        print(f"⚠️ SMOTE skipped: {e}")
+        X_resampled, y_resampled = X_scaled, y_encoded
+
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_resampled, y_resampled, test_size=0.2, random_state=42, stratify=y_resampled
+    )
+
+    # Model with hyperparameter tuning
+    model = RandomForestClassifier(random_state=42, class_weight="balanced")
+    param_grid = {
+        'n_estimators': [100, 200, 300],
+        'max_depth': [10, 20, 30],
+        'min_samples_split': [2, 5],
+        'min_samples_leaf': [1, 2]
+    }
+
+    # Grid Search
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    grid_search = GridSearchCV(model, param_grid, cv=cv, scoring='f1_weighted', n_jobs=-1)
+    print("\n🚀 Running GridSearchCV...")
+    grid_search.fit(X_train, y_train)
+    model = grid_search.best_estimator_
+    print(f"Best parameters: {grid_search.best_params_}")
+
+    # Cross-validation
+    cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring='f1_weighted')
+    print(f"\n🚀 Cross-validation F1 scores: {cv_scores}")
+    print(f"Average CV F1 score: {cv_scores.mean():.4f} (±{cv_scores.std():.4f})")
+
+    print("\n🚀 Training final model...")
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    print(f"✅ Test Accuracy: {acc:.4f}")
+
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred, target_names=le.classes_))
+
+    # Confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    print("\nConfusion Matrix:\n", cm)
+
+    # Plot confusion matrix
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=le.classes_, yticklabels=le.classes_)
+    plt.title('Confusion Matrix for Combined Dataset')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.show()
+
+    # Feature importance
+    feature_importance = pd.DataFrame({
+        'Feature': X.columns,
+        'Importance': model.feature_importances_
+    }).sort_values(by='Importance', ascending=False)
+    print(f"\nFeature Importance:")
+    print(feature_importance)
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x='Importance', y='Feature', data=feature_importance)
+    plt.title('Feature Importance for Combined Dataset')
+    plt.tight_layout()
+    plt.show()
+
+    # Save
+    joblib.dump(model, "mental_health_combined_model.pkl")
+    joblib.dump(le, "label_encoder.pkl")
+    joblib.dump(scaler, "scaler.pkl")
+    print("\n💾 Model and encoders saved!")
+
+    return model, le, scaler
+
+# ----------------------------------------------------
+# STEP 6: MAIN
+# ----------------------------------------------------
 if __name__ == "__main__":
-    main()
+    X, y = combine_datasets()
+    model, le, scaler = train_combined_model(X, y)
+    print("\n🎯 Done! Clean, unified model trained successfully.")
