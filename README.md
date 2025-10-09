@@ -1,8 +1,10 @@
-**Mental Health Classification Model Documentation**
+**LINK OF PROJECT ON GITHUB LINK:"https://github.com/jahnzab/ProjectFlask_internship_AssignmenT"** 
+
+***Mental Health Classification Model Documentation***
 
 *Project Title*
 
-*Multimodal Psychometric Mental Health Assessment System (Anxiety, Depression, Stress)*
+**Multimodal Psychometric Mental Health Assessment System (Anxiety, Depression, Stress)**
 
 ---
 
@@ -294,7 +296,7 @@ Future Work:
 ---
 **Fusion Challenges**
 
-While it is conceptually appealing to integrate skin image features with psychological metrics, in practice, fusion reduced accuracy drastically due to:
+** While it is conceptually appealing to integrate skin image features with psychological metrics, in practice, fusion reduced accuracy drastically due to:**
 
 Heterogeneous feature domains:
 
@@ -330,4 +332,4 @@ Random Forest–based psychological assessment effectively identifies mental hea
 However, due to data heterogeneity and label mismatch, fusion is not currently viable. A multimodal fusion system would require a unified embedding space (e.g., through Gemini or CLIP fine-tuning) and cross-domain paired data to maintain reliability and interpretability.
 
 
-End of Report.
+**End of Report.**
