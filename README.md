@@ -1,4 +1,4 @@
-**LINK OF PROJECT ON GITHUB LINK:"https://github.com/jahnzab/ProjectFlask_internship_AssignmenT"** 
+**LINK OF PROJECT ON GITHUB LINK:"https://github.com/jahnzab/ProjectFlask_internship_Assignment"** 
 
 ***Mental Health Classification Model Documentation***
 
