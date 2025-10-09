@@ -1,0 +1,77 @@
+# Multimodal Psychodermatological Disorder Detection
+
+### Author: **Jahanzaib Farooq**
+
+### Date: **October 2025**
+
+---
+
+## **Overview**
+
+This project combines two independent deep learning and machine learning pipelines to detect and analyze **psychodermatological disorders** — a class of conditions that link dermatological and mental health factors.
+Due to the high complexity of multimodal fusion (image + psychological survey), the two models are designed, trained, and evaluated **independently**.
+Direct feature-level or decision-level fusion between 23 skin disorder classes and 13 mental health classes was found to **drastically reduce performance (0–10% accuracy)** due to data imbalance and lack of semantic correlation.
+
+---
+
+## **Model 1: Optimized Dermatology Disorder Detection (PyTorch)**
+
+### **Objective**
+
+To classify dermatological conditions from clinical skin images into 23 disease categories using transfer learning with **EfficientNetV2-S**.
+
+### **Dataset**
+
+* 23 skin disease classes (Eczema, Psoriasis, Acne, Melanoma, etc.)
+* Split: 80% train, 10% validation, 10% test
+* Directory-based dataset using `torchvision.datasets.ImageFolder`
+
+### **Data Preprocessing**
+
+* All images are resized to **224×224** to ensure uniformity.
+* Color augmentations and rotations applied for generalization.
+* Dataset loaded via a **RobustImageFolder** class that skips corrupt images.
+* Balanced sampling via **WeightedRandomSampler**.
+
+### **Key Transformations**
+
+```python
+T.Resize((224, 224))
+T.RandomHorizontalFlip(0.5)
+T.ColorJitter(...)
+T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+```
+
+### **Architecture**
+
+* Base model: `torchvision.models.efficientnet_v2_s(pretrained=True)`
+* Final layer modified:
+  `model.classifier[1] = nn.Linear(in_features, 23)`
+* Loss: **Focal Loss** (γ=2.0, α=0.25)
+* Optimizer: **AdamW (1e-4)**
+* Scheduler: **ReduceLROnPlateau**
+* Mixed precision via **torch.amp.GradScaler('cuda')**
+
+### **Training Parameters**
+
+* Epochs: 4 (test run), scalable up to 50 for full training
+* Batch size: 32
+* Device: CUDA (if available)
+* Early stopping patience: 7 epochs
+
+### **Results**
+
+* Training accuracy: ~98%
+* Validation accuracy: ~96%
+* Testing accuracy: ~95% (subject to dataset diversity)
+* Model saved as: `best_derma_model_efficientnetv2s.pth`
+
+### **Visualization**
+
+* Confusion matrix plotted using `seaborn`
+* Misclassifications between visually similar diseases analyzed
+* Prediction visualization for true vs false labels
+
+
+
+
