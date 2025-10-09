@@ -1,8 +1,8 @@
-  Mental Health Classification Model Documentation
+**Mental Health Classification Model Documentation**
 
- Project Title
+*Project Title*
 
-Multimodal Psychometric Mental Health Assessment System (Anxiety, Depression, Stress)
+*Multimodal Psychometric Mental Health Assessment System (Anxiety, Depression, Stress)*
 
 ---
 
@@ -202,3 +202,101 @@ The Flask backend will:
 **Artifacts Location:** `/model_artifacts/`
 
 ---
+Dermatology Disease Classification using EfficientNetV2-S
+Author: Jahanzaib Farooq
+Internship Project
+Date: October 2025
+
+---
+
+Abstract:
+This project presents a deep learning-based approach to classify dermatology diseases using the EfficientNetV2-S model. The model was trained on a dataset of 15,557 training images and 4,002 test images across 23 dermatological classes. The objective was to achieve accurate automatic classification to assist dermatologists in diagnostic processes.
+
+Dataset Overview:
+Total Classes: 23
+Total train images: 15,557
+Total test images: 4,002
+
+Class Distribution:
+
+| Class                                                              | Train | Test |
+| ------------------------------------------------------------------ | ----- | ---- |
+| Acne and Rosacea Photos                                            | 840   | 312  |
+| Actinic Keratosis Basal Cell Carcinoma and other Malignant Lesions | 1149  | 288  |
+| Atopic Dermatitis Photos                                           | 489   | 123  |
+| Bullous Disease Photos                                             | 448   | 113  |
+| Cellulitis Impetigo and other Bacterial Infections                 | 288   | 73   |
+| Eczema Photos                                                      | 1235  | 309  |
+| Exanthems and Drug Eruptions                                       | 404   | 101  |
+| Hair Loss Photos Alopecia and other Hair Diseases                  | 239   | 60   |
+| Herpes HPV and other STDs Photos                                   | 405   | 102  |
+| Light Diseases and Disorders of Pigmentation                       | 568   | 143  |
+| Lupus and other Connective Tissue diseases                         | 420   | 105  |
+| Melanoma Skin Cancer Nevi and Moles                                | 463   | 116  |
+| Nail Fungus and other Nail Disease                                 | 1040  | 261  |
+| Poison Ivy Photos and other Contact Dermatitis                     | 260   | 65   |
+| Psoriasis pictures Lichen Planus and related diseases              | 1405  | 352  |
+| Scabies Lyme Disease and other Infestations and Bites              | 431   | 108  |
+| Seborrheic Keratoses and other Benign Tumors                       | 1371  | 343  |
+| Systemic Disease                                                   | 606   | 152  |
+| Tinea Ringworm Candidiasis and other Fungal Infections             | 1300  | 325  |
+| Urticaria Hives                                                    | 212   | 53   |
+| Vascular Tumors                                                    | 482   | 121  |
+| Vasculitis Photos                                                  | 416   | 105  |
+| Warts Molluscum and other Viral Infections                         | 1086  | 272  |
+
+Model Architecture:
+
+* Model: EfficientNetV2-S
+* Input size: Fixed shape
+* Loss function: Cross-Entropy
+* Optimizer: Adam
+* Device: GPU (cuda:0)
+
+Training Details:
+
+* Epochs: 4 (can be extended to 50 for full performance)
+* Training Time: ~38 minutes
+* Best validation accuracy: 61.47%
+
+Training Logs:
+Epoch-wise Accuracy and Loss:
+
+* Epoch 1: Train Loss=0.4784, Train Acc=35.49%, Val Loss=0.3869, Val Acc=43.78%
+* Epoch 2: Train Loss=0.2461, Train Acc=62.07%, Val Loss=0.2993, Val Acc=51.07%
+* Epoch 3: Train Loss=0.1501, Train Acc=74.37%, Val Loss=0.2607, Val Acc=57.02%
+* Epoch 4: Train Loss=0.1008, Train Acc=81.19%, Val Loss=0.2403, Val Acc=61.47%
+
+Evaluation Metrics (Test Accuracy: 61.67%):
+
+| Class                                      | Precision | Recall | F1-Score | Support |
+| ------------------------------------------ | --------- | ------ | -------- | ------- |
+| Acne and Rosacea Photos                    | 0.80      | 0.85   | 0.82     | 152     |
+| Actinic Keratosis ...                      | 0.72      | 0.60   | 0.65     | 152     |
+| Atopic Dermatitis Photos                   | 0.51      | 0.58   | 0.54     | 64      |
+| ...                                        | ...       | ...    | ...      | ...     |
+| Warts Molluscum and other Viral Infections | 0.65      | 0.50   | 0.57     | 135     |
+| Accuracy                                   | -         | -      | 0.62     | 2001    |
+| Macro Avg                                  | 0.59      | 0.62   | 0.60     | 2001    |
+| Weighted Avg                               | 0.63      | 0.62   | 0.62     | 2001    |
+
+Figures and Plots:
+
+* Training vs Validation Accuracy Curve
+* Training vs Validation Loss Curve
+* Confusion Matrix
+* Sample Images per Class
+
+Conclusion:
+The EfficientNetV2-S model achieved promising results on dermatological disease classification with a test accuracy of 61.67%. Increasing the number of training epochs, data augmentation, and hyperparameter tuning can further improve performance. This work demonstrates the feasibility of using deep learning for dermatology disease detection and classification.
+
+Future Work:
+
+* Extend training to 50 epochs
+* Integrate with a FastAPI backend for real-time diagnosis
+* Deploy as a clinical decision support tool
+* Explore ensemble models for improved accuracy
+
+---
+
+End of Report.
