@@ -1,18 +1,18 @@
-#  Mental Health Classification Model Documentation
+  Mental Health Classification Model Documentation
 
-### Project Title
+ Project Title
 
-**Multimodal Psychometric Mental Health Assessment System (Anxiety, Depression, Stress)**
+Multimodal Psychometric Mental Health Assessment System (Anxiety, Depression, Stress)
 
 ---
 
-## 1. Overview
+1. Overview
 
 This project builds a **machine learning–based system** to classify **anxiety, depression, and stress levels** using questionnaire data collected from psychometric instruments:
 
-* **GAD-7** for Anxiety
-* **PHQ-9** for Depression
-* **PSS** for Stress
+* GAD-7 for Anxiety
+* PHQ-9 for Depression
+* PSS for Stress
 
 It processes numerical survey responses (0–4 Likert scale) to predict categorical labels such as *“Mild Anxiety”*, *“Severe Depression”*, and *“Moderate Stress.”*
 
@@ -20,7 +20,7 @@ The model uses **Random Forest Classifiers** with **scikit-learn**, ensuring int
 
 ---
 
-## 2. Data Sources
+2. Data Sources
 
 | Dataset    | File             | Description                                  |
 | ---------- | ---------------- | -------------------------------------------- |
@@ -32,9 +32,9 @@ Each dataset contains both raw responses (0–4) and computed labels such as *Lo
 
 ---
 
-## 3. Data Correction and Preprocessing
+3. Data Correction and Preprocessing
 
-### 3.1 Stress Data Correction
+3.1 Stress Data Correction
 
 The PSS questionnaire contains **reverse-scored questions (4,5,7,8)**.
 The script automatically:
@@ -49,26 +49,26 @@ The script automatically:
 
 A verification step prints the first 10 corrected rows to confirm label accuracy.
 
-### 3.2 Unified Dataset Creation
+3.2 Unified Dataset Creation
 
 After correction:
 
-* All three datasets are merged into a **combined dataframe** with 26 features (questions).
-* A new column `condition_type` identifies whether a record belongs to Anxiety, Depression, or Stress.
+ All three datasets are merged into a **combined dataframe** with 26 features (questions).
+ A new column `condition_type` identifies whether a record belongs to Anxiety, Depression, or Stress.
 
 ---
 
-## 4. Questionnaires
+Questionnaires
 
-### 🌀 Anxiety (7 Questions – GAD-7)
+Anxiety (7 Questions – GAD-7)
 
 Focuses on nervousness, restlessness, and fear.
 
-### 💭 Depression (9 Questions – PHQ-9)
+Depression (9 Questions – PHQ-9)
 
 Measures loss of interest, hopelessness, tiredness, and negative thoughts.
 
-### ⚡ Stress (10 Questions – PSS)
+Stress (10 Questions – PSS)
 
 Assesses perceived control, irritability, and workload coping ability.
 
@@ -76,28 +76,28 @@ Total features used = **26 questions**
 
 ---
 
-## 5. Label Encoding & Feature Scaling
+5. Label Encoding & Feature Scaling
 
-* **Label Encoding**: Converts textual class labels (e.g., “Moderate Anxiety”) into numerical codes.
-* **Standard Scaling**: Normalizes responses for each condition separately using `StandardScaler` to improve model stability.
+* Label Encoding: Converts textual class labels (e.g., “Moderate Anxiety”) into numerical codes.
+* Standard Scaling: Normalizes responses for each condition separately using `StandardScaler` to improve model stability.
 
 Each condition (anxiety, depression, stress) has its **own scaler** and **label encoder** saved for deployment.
 
 ---
 
-## 6. Model Training
+6. Model Training
 
 Each mental health dimension is trained **independently** using:
 
-* **Model**: `RandomForestClassifier`
-* **Hyperparameters**:
+* Model: `RandomForestClassifier`
+* Hyperparameters:
 
   * `n_estimators=100`
   * `max_depth=15`
   * `class_weight='balanced'`
   * `n_jobs=-1` (CPU parallelism)
-* **Split**: `train_test_split` with 80% training, 20% testing
-* **Hardware**: CPU-only mode (GPU explicitly disabled)
+* Split: `train_test_split` with 80% training, 20% testing
+* Hardware: CPU-only mode (GPU explicitly disabled)
 
 The script trains and saves **three models:**
 
@@ -107,31 +107,31 @@ The script trains and saves **three models:**
 
 ---
 
-## 7. Evaluation Metrics
+7. Evaluation Metrics
 
-### 7.1 Anxiety Model (GAD-7)
+7.1 Anxiety Model (GAD-7)
 
-* **Accuracy:** 94.07%
-* **Classes:** Minimal, Mild, Moderate, Severe Anxiety
-* **Insights:** Performs exceptionally well for moderate and severe categories.
+* Accuracy:** 94.07%
+* Classes:** Minimal, Mild, Moderate, Severe Anxiety
+* Insights:** Performs exceptionally well for moderate and severe categories.
 
-### 7.2 Depression Model (PHQ-9)
+ 7.2 Depression Model (PHQ-9)
 
-* **Accuracy:** 88.18%
-* **Classes:** Minimal, Mild, Moderate, Moderately Severe, Severe Depression
-* **Insights:** Excellent separation between moderate and severe states.
+* Accuracy:** 88.18%
+* Classes:** Minimal, Mild, Moderate, Moderately Severe, Severe Depression
+* Insights:** Excellent separation between moderate and severe states.
 
-### 7.3 Stress Model (PSS)
+7.3 Stress Model (PSS)
 
-* **Accuracy:** 93.35%
-* **Classes:** Low, Moderate, High Stress
-* **Insights:** Slight underperformance for low stress due to fewer samples.
+* Accuracy:** 93.35%
+* Classes:** Low, Moderate, High Stress
+* Insights:** Slight underperformance for low stress due to fewer samples.
 
 All reports include **Precision, Recall, F1-Score**, and **Confusion Matrices** saved in `results.txt`.
 
 ---
 
-## 8. Artifacts Saved
+8. Artifacts Saved
 
 | File                                    | Description                                              |
 | --------------------------------------- | -------------------------------------------------------- |
@@ -146,7 +146,7 @@ These are used later by the Flask web app for prediction and interaction.
 
 ---
 
-## 9. Prediction Pipeline
+9. Prediction Pipeline
 
 The test pipeline:
 
@@ -166,8 +166,7 @@ Stress → Moderate Stress
 ```
 
 ---
-
-## 10. Flask App Integration
+10. Flask App Integration
 
 The Flask backend will:
 
@@ -179,7 +178,7 @@ The Flask backend will:
 
 ---
 
-## 11. Key Advantages
+ 11. Key Advantages
 
  Uses real psychological scales (clinically validated)
  Modular and interpretable model architecture
@@ -189,7 +188,7 @@ The Flask backend will:
 
 ---
 
-## 12. Next Steps
+12. Next Steps
 
 * Integrate **Gemini API** to handle conversational input and semantic embeddings.
 * Build a **Flask-based Question-Answer interface** to simulate mental health screening.
