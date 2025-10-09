@@ -9,7 +9,7 @@ Key Fixes:
 
 This ensures all tensors are exactly [B, 3, 224, 224]. Run now—should complete epoch in ~2-4 min.
 
-Author: Jahanzaib Farooq (Improved by Grok)
+Author: Jahanzaib Farooq 
 Date: October 2025
 """
 
