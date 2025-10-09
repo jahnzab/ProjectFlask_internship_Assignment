@@ -1,0 +1,89 @@
+MENTAL HEALTH MODEL RESULTS - ANXIETY, STRESS, DEPRESSION
+============================================================
+
+Training completed on CPU only
+Total questions used: 26
+- Anxiety: 7 questions (GAD-7)
+- Depression: 9 questions (PHQ-9)
+- Stress: 10 questions (PSS)
+
+Confusion Matrix:
+[[100   5   3   0]
+ [  4  22   0   0]
+ [  2   0 115   5]
+ [  0   0   5 144]]
+
+
+ANXIETY RESULTS
+----------------------------------------
+Accuracy: 0.9407
+Questions used: 7
+Test samples: 405
+
+Classification Report:
+                  precision    recall  f1-score   support
+
+    Mild Anxiety       0.94      0.93      0.93       108
+ Minimal Anxiety       0.81      0.85      0.83        26
+Moderate Anxiety       0.93      0.94      0.94       122
+  Severe Anxiety       0.97      0.97      0.97       149
+
+        accuracy                           0.94       405
+       macro avg       0.91      0.92      0.92       405
+    weighted avg       0.94      0.94      0.94       405
+
+==================================================
+Confusion Matrix:
+[[ 68   0   1   0   0   0]
+ [ 11  17   0   0   0   0]
+ [  7   0  84  13   0   0]
+ [  0   0   5  83   0   6]
+ [  0   0   0   0   6   0]
+ [  0   0   0   5   0 100]]
+
+
+DEPRESSION RESULTS
+----------------------------------------
+Accuracy: 0.8818
+Questions used: 9
+Test samples: 406
+
+Classification Report:
+                              precision    recall  f1-score   support
+
+             Mild Depression       0.79      0.99      0.88        69
+          Minimal Depression       1.00      0.61      0.76        28
+         Moderate Depression       0.93      0.81      0.87       104
+Moderately Severe Depression       0.82      0.88      0.85        94
+               No Depression       1.00      1.00      1.00         6
+           Severe Depression       0.94      0.95      0.95       105
+
+                    accuracy                           0.88       406
+                   macro avg       0.91      0.87      0.88       406
+                weighted avg       0.89      0.88      0.88       406
+
+==================================================
+Confusion Matrix:
+[[ 55   0  13]
+ [  0   3   9]
+ [  5   0 321]]
+
+
+STRESS RESULTS
+----------------------------------------
+Accuracy: 0.9335
+Questions used: 10
+Test samples: 406
+
+Classification Report:
+                       precision    recall  f1-score   support
+
+High Perceived Stress       0.92      0.81      0.86        68
+           Low Stress       1.00      0.25      0.40        12
+      Moderate Stress       0.94      0.98      0.96       326
+
+             accuracy                           0.93       406
+            macro avg       0.95      0.68      0.74       406
+         weighted avg       0.93      0.93      0.93       406
+
+==================================================
