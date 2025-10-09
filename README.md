@@ -292,5 +292,42 @@ Future Work:
 * Explore ensemble models for improved accuracy
 
 ---
+**Fusion Challenges**
+
+While it is conceptually appealing to integrate skin image features with psychological metrics, in practice, fusion reduced accuracy drastically due to:
+
+Heterogeneous feature domains:
+
+Visual embeddings (CNN feature maps) vs. numerical psychological responses.
+Lack of shared latent representation.
+
+Unequal label cardinality:
+
+23 dermatological classes vs. 13 psychological categories (3 each × 3 disorders + intermediate levels).
+Leads to severe imbalance in joint label space.
+
+Limited cross-modal correlation:
+
+Psychological distress may influence skin conditions, but not deterministically.
+Dataset lacks paired multimodal samples (same subject with both skin and questionnaire data).
+
+Empirical degradation:
+
+Fusion via concatenation or multimodal transformer yielded 0–10% accuracy, even after normalization and balancing.
+Hence, multimodal integration is not feasible without large-scale paired datasets and domain-specific embeddings.
+Future Work
+Collect paired image + questionnaire datasets for multimodal training.
+Use Gemini or CLIP embeddings for semantic alignment.
+Apply attention-based fusion networks or multimodal transformers (e.g., LXMERT, Flamingo).
+Investigate causal correlations between dermatological and psychological features.
+Conclusion
+
+Both independent pipelines perform exceptionally well in their respective domains:
+
+EfficientNetV2-S delivers robust dermatology classification accuracy (~95–98%).
+Random Forest–based psychological assessment effectively identifies mental health severity with clinically aligned metrics.
+
+However, due to data heterogeneity and label mismatch, fusion is not currently viable. A multimodal fusion system would require a unified embedding space (e.g., through Gemini or CLIP fine-tuning) and cross-domain paired data to maintain reliability and interpretability.
+
 
 End of Report.
