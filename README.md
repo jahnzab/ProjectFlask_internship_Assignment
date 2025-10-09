@@ -196,21 +196,15 @@ The Flask backend will:
 
 ---
 
-**Author:** *Jahanzaib Farooq*
-**Environment:** Ubuntu Linux, Python 3.12, scikit-learn 1.4+
-**Output Accuracy:** 88–94% range across all categories
-**Artifacts Location:** `/model_artifacts/`
 
 ---
-Dermatology Disease Classification using EfficientNetV2-S
-Author: Jahanzaib Farooq
-Internship Project
-Date: October 2025
+**Dermatology Disease Classification using EfficientNetV2-S**
+
 
 ---
 
-Abstract:
-This project presents a deep learning-based approach to classify dermatology diseases using the EfficientNetV2-S model. The model was trained on a dataset of 15,557 training images and 4,002 test images across 23 dermatological classes. The objective was to achieve accurate automatic classification to assist dermatologists in diagnostic processes.
+**Abstract:
+This project presents a deep learning-based approach to classify dermatology diseases using the EfficientNetV2-S model. The model was trained on a dataset of 15,557 training images and 4,002 test images across 23 dermatological classes. The objective was to achieve accurate automatic classification to assist dermatologists in diagnostic processes.**
 
 Dataset Overview:
 Total Classes: 23
