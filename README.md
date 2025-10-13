@@ -30,7 +30,7 @@ The model uses **Random Forest Classifiers** with **scikit-learn**, ensuring int
 | Depression | `Depression.csv` | Based on **PHQ-9 questionnaire**             |
 | Stress     | `Stress.csv`     | Based on **Perceived Stress Scale (PSS-10)** |
 
-Each dataset contains both raw responses (0–4) and computed labels such as *Low*, *Moderate*, *Severe* levels.
+Each dataset contains both raw responses (0–3 or 0-4) and computed labels such as *Low*, *Moderate*, *Severe* levels.
 
 ---
 
@@ -296,7 +296,7 @@ Future Work:
 ---
 **Fusion Challenges**
 
-** While it is conceptually appealing to integrate skin image features with psychological metrics, in practice, fusion reduced accuracy drastically due to:**
+**While it is conceptually appealing to integrate skin image features with psychological metrics, in practice, fusion reduced accuracy drastically due to:**
 
 Heterogeneous feature domains:
 
