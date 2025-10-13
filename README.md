@@ -16,7 +16,7 @@ This project builds a **machine learning–based system** to classify **anxiety,
 * PHQ-9 for Depression
 * PSS for Stress
 
-It processes numerical survey responses (0–4 Likert scale) to predict categorical labels such as *“Mild Anxiety”*, *“Severe Depression”*, and *“Moderate Stress.”*
+It processes numerical survey responses (0–3 or 0-4 Likert scale) to predict categorical labels such as *“Mild Anxiety”*, *“Severe Depression”*, and *“Moderate Stress.”*
 
 The model uses **Random Forest Classifiers** with **scikit-learn**, ensuring interpretability, fast inference, and reliable results on CPU hardware.
 
